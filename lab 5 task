@@ -1,0 +1,77 @@
+import numpy as np
+import pandas as pd
+from sklearn.preprocessing import LabelEncoder
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.metrics import confusion_matrix, accuracy_score
+import os
+
+# Function to load the dataset from Excel or create a default one
+def load_or_create_dataset(file_path):
+    if os.path.exists(file_path):
+        print("Loading dataset from Excel...")
+        df = pd.read_excel(file_path)
+    else:
+        print("Excel file not found. Using default dataset.")
+        data = {
+            "Day": ["Monday", "Monday", "Tuesday", "Wednesday", "Wednesday", "Thursday",
+                    "Friday", "Friday", "Saturday", "Sunday", "Sunday", "Tuesday", "Thursday", "Saturday"],
+            "Time": ["Morning", "Evening", "Afternoon", "Morning", "Evening", "Afternoon",
+                     "Morning", "Evening", "Afternoon", "Morning", "Evening", "Morning", "Evening", "Morning"],
+            "Busy": ["No", "Yes", "Yes", "No", "Yes", "No", "No", "Yes", "Yes", "No", "Yes", "No", "Yes", "No"]
+        }
+        df = pd.DataFrame(data)
+        df.to_excel(file_path, index=False)
+    return df
+
+# Load or create dataset
+file_path = "gym_dataset.xlsx"
+df = load_or_create_dataset(file_path)
+
+# Encode categorical variables using LabelEncoder
+le_day = LabelEncoder()
+le_time = LabelEncoder()
+le_busy = LabelEncoder()
+
+df['Day'] = le_day.fit_transform(df['Day'])
+df['Time'] = le_time.fit_transform(df['Time'])
+df['Busy'] = le_busy.fit_transform(df['Busy'])
+
+# Split dataset into features and target variable
+X = df[['Day', 'Time']].values
+y = df['Busy'].values
+
+# Train the Decision Tree model
+dt = DecisionTreeClassifier(criterion='entropy', random_state=42)
+dt.fit(X, y)
+
+# Predict on the training data for evaluation
+y_pred = dt.predict(X)
+
+# Calculate confusion matrix and accuracy
+conf_matrix = confusion_matrix(y, y_pred)
+accuracy = accuracy_score(y, y_pred)
+
+# Display confusion matrix and accuracy
+print("Confusion Matrix:\n", conf_matrix)
+print("Accuracy:", accuracy)
+
+# Allow user to input new data and make a prediction
+day = input("Enter the day (e.g., Monday, Tuesday): ")
+time = input("Enter the time (e.g., Morning, Afternoon): ")
+
+# Encode user input and predict
+day_encoded = le_day.transform([day])[0]
+time_encoded = le_time.transform([time])[0]
+new_entry = np.array([[day_encoded, time_encoded]])
+prediction = dt.predict(new_entry)
+predicted_busy = le_busy.inverse_transform(prediction)[0]
+
+print(f"Prediction for {day} and {time}: {predicted_busy}")
+
+# Option to save a new entry
+save_new = input("Do you want to add this entry to the dataset? (yes/no): ").strip().lower()
+if save_new == 'yes':
+    new_data = pd.DataFrame([[day, time, predicted_busy]], columns=["Day", "Time", "Busy"])
+    updated_df = pd.concat([df, new_data], ignore_index=True)
+    updated_df.to_excel(file_path, index=False)
+    print(f"New entry added and dataset saved to {file_path}")
